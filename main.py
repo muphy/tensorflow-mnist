@@ -1,46 +1,33 @@
-import numpy as np
-import tensorflow as tf
 from flask import Flask, jsonify, render_template, request
 
-from mnist import model
-
-
-x = tf.placeholder("float", [None, 784])
-sess = tf.Session()
-
-# restore trained data
-with tf.variable_scope("regression"):
-    y1, variables = model.regression(x)
-saver = tf.train.Saver(variables)
-saver.restore(sess, "mnist/data/regression.ckpt")
-
-
-with tf.variable_scope("convolutional"):
-    keep_prob = tf.placeholder("float")
-    y2, variables = model.convolutional(x, keep_prob)
-saver = tf.train.Saver(variables)
-saver.restore(sess, "mnist/data/convolutional.ckpt")
-
-
-def regression(input):
-    return sess.run(y1, feed_dict={x: input}).flatten().tolist()
-
-
-def convolutional(input):
-    return sess.run(y2, feed_dict={x: input, keep_prob: 1.0}).flatten().tolist()
+from funcbox import tf_package
 
 
 # webapp
 app = Flask(__name__)
 
-
-@app.route('/api/mnist', methods=['POST'])
-def mnist():
-    input = ((255 - np.array(request.json, dtype=np.uint8)) / 255.0).reshape(1, 784)
-    output1 = regression(input)
-    output2 = convolutional(input)
-    return jsonify(results=[output1, output2])
-
+@app.route('/api/packages/price', methods=['GET'])
+def hello():
+    pop_id = request.args.get('pop_id')
+    if len(pop_id) != 4:
+        return jsonify(results="bad request: pop_id")
+    cover_code = request.args.get('cover_code')
+    if len(cover_code) != 22:
+        return jsonify(results="bad request: cover_code")
+    if pop_id is None:
+        age = float(request.args.get('price'))/10
+        job = request.args.get('job')
+        gender = request.args.get('gender')
+    else:
+        age = float(pop_id[:2])/10
+        job = pop_id[2:3]
+        gender = pop_id[-1]
+    package_price = tf_package.calc_package_price(age,job,gender,cover_code)
+    res = {
+       'price':package_price
+    }
+    # print(res)
+    return jsonify(results=res)
 
 @app.route('/')
 def main():
@@ -48,4 +35,9 @@ def main():
 
 
 if __name__ == '__main__':
-    app.run()
+    # app.run()
+# app.run(host='0.0.0.0', port=app.config["PORT"], debug=app.config["DEBUG"])
+    app.config.update(
+        TEMPLATES_AUTO_RELOAD=True
+    )
+    app.run(host='0.0.0.0', port=9998, debug=False)
